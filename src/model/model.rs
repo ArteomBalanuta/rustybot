@@ -17,9 +17,7 @@ pub struct User {
     pub is_bot: bool,
 }
 
-
 fn parse_user(json: &str) -> User {
-	let u: User = serde_json::from_str(json).unwrap();
-	return u;
+    let u: User = serde_json::from_str(json).unwrap();
+    return u;
 }
-

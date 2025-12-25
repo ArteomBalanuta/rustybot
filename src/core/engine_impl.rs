@@ -3,7 +3,12 @@ use std::collections::HashMap;
 use crate::{core::Engine, model::User};
 
 pub struct EngineImpl {
-    pub name : String
+    pub name: String,
+    pub channel: String,
+    pub prefix: String,
+
+    active_users: HashMap<User, String>,
+    afk_users: HashMap<User, String>,
 }
 impl EngineImpl {
     pub fn s(&self) -> String {

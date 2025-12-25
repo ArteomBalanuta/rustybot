@@ -1,4 +1,3 @@
-
 use crate::core::Engine;
 use crate::core::EngineImpl;
 
@@ -7,11 +6,11 @@ pub trait OnlineListener {
 }
 
 pub struct OnlineListenerImpl {
-    engine: EngineImpl
+    engine: EngineImpl,
 }
 
 impl OnlineListener for OnlineListenerImpl {
     fn notify(&self, json: &str) {
         println!("{}", self.engine.name);
     }
-} 
+}
