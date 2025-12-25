@@ -6,7 +6,7 @@ pub trait Engine {
     fn Start(&self);
     fn Stop(&self);
 
-    fn DispatchMessage(&self, jsonMessage: &str);
+    fn DispatchMessage(&self, message: &str);
     fn SendRawMessage(&self, message: &str);
     fn SendChatMessage(&self, author: &str, message: &str, isWhisper: bool) -> String;
 

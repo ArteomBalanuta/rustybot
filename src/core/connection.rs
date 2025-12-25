@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures::stream::{Any, SplitSink};
@@ -14,22 +15,27 @@ use tungstenite::http::{Method, Request};
 use tokio::io::{AsyncWriteExt, stdout};
 use tokio::time::sleep;
 
+use crate::core::{Engine, EngineImpl};
+
 pub struct Connection {
     url: String,
     writer: mpsc::UnboundedSender<Message>,
+    engine: Arc<EngineImpl>,
 }
 
 impl Connection {
     //"wss://hack.chat/chat-ws"
-    pub async fn new(url: &str) -> Self {
+    pub async fn new(url: &str, e: Arc<EngineImpl>) -> Self {
         let url_request = url.into_client_request().unwrap();
         let (ws_stream, err) = connect_async(url_request).await.unwrap();
 
         println!("WebSocket handshake has been successfully completed");
 
         let (mut write, mut read) = ws_stream.split();
-
         let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
+
+        // Clone the Arc for the Reader Task
+        let engine_for_reader = Arc::clone(&e);
 
         // writer
         tokio::spawn(async move {
@@ -45,7 +51,10 @@ impl Connection {
         tokio::spawn(async move {
             while let Some(msg) = read.next().await {
                 match msg {
-                    Ok(Message::Text(text)) => println!("Received: {}", text),
+                    Ok(Message::Text(text)) => {
+                        println!("Received: {}", text);
+                        engine_for_reader.DispatchMessage(text.as_str());
+                    }
                     Ok(Message::Binary(bin)) => println!("Received binary: {:?}", bin),
                     Err(e) => {
                         eprintln!("Error reading: {}", e);
@@ -58,6 +67,7 @@ impl Connection {
 
         Connection {
             url: url.to_string(),
+            engine: e,
             writer: tx,
         }
     }

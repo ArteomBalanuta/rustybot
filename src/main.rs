@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures::{SinkExt, StreamExt, future, pin_mut};
@@ -20,12 +22,23 @@ use core::Engine;
 mod listener;
 use listener::OnlineListener;
 
+use crate::core::EngineImpl;
+
 #[tokio::main]
 async fn main() {
     println!("main started");
 
     let url = "wss://hack.chat/chat-ws";
-    let mut conn = Connection::new(url).await;
+
+    let engine = Arc::new(EngineImpl {
+        name: "blah".to_string(),
+        prefix: "*".to_string(),
+        channel: "programming".to_string(),
+        active_users: HashMap::new(),
+        afk_users: HashMap::new(),
+    });
+
+    let mut conn = Connection::new(url, engine).await;
 
     let join = r#"{"cmd": "join", "channel": "programming", "nick": "rustskymonke"}"#;
     conn.write(join).await;

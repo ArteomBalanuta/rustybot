@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use serde_json::Value;
+
 use crate::{core::Engine, model::User};
 
 pub struct EngineImpl {
@@ -7,8 +9,8 @@ pub struct EngineImpl {
     pub channel: String,
     pub prefix: String,
 
-    active_users: HashMap<User, String>,
-    afk_users: HashMap<User, String>,
+    pub active_users: HashMap<User, String>,
+    pub afk_users: HashMap<User, String>,
 }
 impl EngineImpl {
     pub fn s(&self) -> String {
@@ -19,7 +21,21 @@ impl Engine for EngineImpl {
     fn Start(&self) {}
     fn Stop(&self) {}
 
-    fn DispatchMessage(&self, jsonMessage: &str) {}
+    fn DispatchMessage(&self, msg: &str) {
+        let v: Value = serde_json::from_str(msg).unwrap();
+        if v["cmd"].is_null() {
+            println!("unknown cmd, payload: {}", v);
+            return;
+        }
+        let cmd = v["cmd"].as_str().unwrap();
+        match cmd {
+            "join" => println!("{}", msg),
+            "chat" => println!("chat: {}", v["text"]),
+            _ => {
+                println!("unknown cmd: {}", msg)
+            }
+        }
+    }
     fn SendRawMessage(&self, message: &str) {}
     fn SendChatMessage(&self, author: &str, message: &str, isWhisper: bool) -> String {
         return "blah".to_string();
