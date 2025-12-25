@@ -1,8 +1,13 @@
 use std::collections::HashMap;
+use std::rc::{Rc, Weak};
 
 use serde_json::Value;
 
-use crate::{core::Engine, model::User};
+use crate::{
+    core::Engine,
+    listener::{ChatListenerImpl, Listener, OnlineListenerImpl},
+    model::User,
+};
 
 pub struct EngineImpl {
     pub name: String,
@@ -11,10 +16,22 @@ pub struct EngineImpl {
 
     pub active_users: HashMap<User, String>,
     pub afk_users: HashMap<User, String>,
+
+    pub online_listener: Option<OnlineListenerImpl>,
+    pub chat_listener: Option<ChatListenerImpl>,
 }
+
 impl EngineImpl {
     pub fn s(&self) -> String {
         return "dummy".to_string();
+    }
+
+    pub fn SetOnlineListener(&mut self, l: OnlineListenerImpl) {
+        self.online_listener = Some(l);
+    }
+
+    pub fn SetChatListenerImpl(&mut self, l: ChatListenerImpl) {
+        self.chat_listener = Some(l);
     }
 }
 impl Engine for EngineImpl {
@@ -24,13 +41,25 @@ impl Engine for EngineImpl {
     fn DispatchMessage(&self, msg: &str) {
         let v: Value = serde_json::from_str(msg).unwrap();
         if v["cmd"].is_null() {
-            println!("unknown cmd, payload: {}", v);
+            println!("missing cmd, payload: {}", v);
             return;
         }
         let cmd = v["cmd"].as_str().unwrap();
         match cmd {
             "join" => println!("{}", msg),
-            "chat" => println!("chat: {}", v["text"]),
+            "onlineSet" => {
+                if let Some(l) = &self.online_listener {
+                    l.notify(msg);
+                }
+            }
+            "onlineAdd" => {}
+            "onlineRemove" => {}
+            "chat" => {
+                if let Some(l) = &self.chat_listener {
+                    l.notify(msg);
+                }
+            }
+            "info" => println!("chat: {}", v["text"]),
             _ => {
                 println!("unknown cmd: {}", msg)
             }

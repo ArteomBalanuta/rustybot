@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures::stream::{Any, SplitSink};
@@ -20,12 +20,12 @@ use crate::core::{Engine, EngineImpl};
 pub struct Connection {
     url: String,
     writer: mpsc::UnboundedSender<Message>,
-    engine: Arc<EngineImpl>,
+    engine: Arc<Mutex<EngineImpl>>,
 }
 
 impl Connection {
     //"wss://hack.chat/chat-ws"
-    pub async fn new(url: &str, e: Arc<EngineImpl>) -> Self {
+    pub async fn connect(url: &str, engine: Arc<Mutex<EngineImpl>>) -> Self {
         let url_request = url.into_client_request().unwrap();
         let (ws_stream, err) = connect_async(url_request).await.unwrap();
 
@@ -35,7 +35,7 @@ impl Connection {
         let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
 
         // Clone the Arc for the Reader Task
-        let engine_for_reader = Arc::clone(&e);
+        let engine_for_reader = Arc::clone(&engine);
 
         // writer
         tokio::spawn(async move {
@@ -53,7 +53,10 @@ impl Connection {
                 match msg {
                     Ok(Message::Text(text)) => {
                         println!("Received: {}", text);
-                        engine_for_reader.DispatchMessage(text.as_str());
+                        engine_for_reader
+                            .lock()
+                            .unwrap()
+                            .DispatchMessage(text.as_str());
                     }
                     Ok(Message::Binary(bin)) => println!("Received binary: {:?}", bin),
                     Err(e) => {
@@ -67,7 +70,7 @@ impl Connection {
 
         Connection {
             url: url.to_string(),
-            engine: e,
+            engine: engine,
             writer: tx,
         }
     }

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+// use std::sync::{Arc};
+
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures::{SinkExt, StreamExt, future, pin_mut};
@@ -20,25 +22,37 @@ use core::Connection;
 use core::Engine;
 
 mod listener;
-use listener::OnlineListener;
+use listener::OnlineListenerImpl;
 
 use crate::core::EngineImpl;
+use crate::listener::ChatListenerImpl;
 
 #[tokio::main]
 async fn main() {
     println!("main started");
 
     let url = "wss://hack.chat/chat-ws";
-
-    let engine = Arc::new(EngineImpl {
+    let mut engine = Arc::new(Mutex::new(EngineImpl {
         name: "blah".to_string(),
         prefix: "*".to_string(),
         channel: "programming".to_string(),
         active_users: HashMap::new(),
         afk_users: HashMap::new(),
-    });
+        online_listener: None,
+        chat_listener: None,
+    }));
 
-    let mut conn = Connection::new(url, engine).await;
+    {
+        let weak_engine = Arc::downgrade(&engine);
+        let mut unlocked_engine = engine.lock().unwrap();
+
+        unlocked_engine.SetOnlineListener(OnlineListenerImpl::new(weak_engine.clone()));
+        unlocked_engine.SetChatListenerImpl(ChatListenerImpl::new(weak_engine));
+    }
+
+    // let engine = Arc::new(e);
+
+    let mut conn = Connection::connect(url, engine).await;
 
     let join = r#"{"cmd": "join", "channel": "programming", "nick": "rustskymonke"}"#;
     conn.write(join).await;
