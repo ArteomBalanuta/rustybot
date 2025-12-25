@@ -13,9 +13,9 @@ impl Listener for OnlineListenerImpl {
     fn notify(&self, json: &str) {
         if let Some(e) = self.engine.upgrade() {
             // 2. Lock the standard mutex (blocks the thread briefly, no await)
-            let free_engine = e.lock().expect("Mutex was poisoned");
-
-            println!("onlineset engine name: {}", free_engine.name);
+            println!("before lock in notify");
+            println!("onlineset engine name: {}", e.lock().unwrap().name);
+            println!("after lock in notify");
         } else {
             panic!()
         }
@@ -24,15 +24,15 @@ impl Listener for OnlineListenerImpl {
 
 impl OnlineListenerImpl {
     pub fn new(engine: Weak<Mutex<EngineImpl>>) -> OnlineListenerImpl {
-        if let Some(e) = engine.upgrade() {
-            // 2. Lock the standard mutex (blocks the thread briefly, no await)
-            let free_engine = e.lock().expect("Mutex was poisoned");
+        // if let Some(e) = engine.upgrade() {
+        //     // 2. Lock the standard mutex (blocks the thread briefly, no await)
+        //     let free_engine = e.lock().expect("Mutex was poisoned");
 
-            println!("onlineset engine name: {}", free_engine.name);
+        //     println!("onlineset engine name: {}", free_engine.name);
 
-            return OnlineListenerImpl { engine };
-        } else {
-            panic!()
-        }
+        // } else {
+        //     panic!()
+        // }
+        return OnlineListenerImpl { engine };
     }
 }

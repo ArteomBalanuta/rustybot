@@ -49,6 +49,7 @@ impl Engine for EngineImpl {
             "join" => println!("{}", msg),
             "onlineSet" => {
                 if let Some(l) = &self.online_listener {
+                    println!("notifying onlineSet");
                     l.notify(msg);
                 }
             }
@@ -56,6 +57,7 @@ impl Engine for EngineImpl {
             "onlineRemove" => {}
             "chat" => {
                 if let Some(l) = &self.chat_listener {
+                    println!("notifying chat");
                     l.notify(msg);
                 }
             }

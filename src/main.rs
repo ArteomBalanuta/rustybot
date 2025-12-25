@@ -46,10 +46,14 @@ async fn main() {
         let weak_engine = Arc::downgrade(&engine);
         let mut unlocked_engine = engine.lock().unwrap();
 
+        // let mut unlocked_arc = Arc::new(unlocked_engine);
+        // let unlocked_weak_ref = Arc::downgrade(&unlocked_arc);
+
         unlocked_engine.SetOnlineListener(OnlineListenerImpl::new(weak_engine.clone()));
         unlocked_engine.SetChatListenerImpl(ChatListenerImpl::new(weak_engine));
     }
 
+    println!("unlocked");
     // let engine = Arc::new(e);
 
     let mut conn = Connection::connect(url, engine).await;

@@ -57,6 +57,8 @@ impl Connection {
                             .lock()
                             .unwrap()
                             .DispatchMessage(text.as_str());
+
+                        println!("locked")
                     }
                     Ok(Message::Binary(bin)) => println!("Received binary: {:?}", bin),
                     Err(e) => {
