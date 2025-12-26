@@ -67,9 +67,4 @@ async fn main() {
         // send received WS message to the engine
         handle.to_engine(&v);
     }
-
-    // Keep the program running so the background tasks don't die
-    loop {
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    }
 }
