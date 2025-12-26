@@ -5,7 +5,7 @@ use crate::{core::event_handler::EngineCommand, model::User};
 use std::collections::HashMap;
 
 pub trait Engine {
-    async fn Start(&self) -> (mpsc::UnboundedSender<EngineCommand>);
+    async fn start(&mut self);
     fn Stop(&self);
 
     fn DispatchMessage(&self, message: &str);

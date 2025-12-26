@@ -7,6 +7,7 @@ use std::time::Duration;
 use futures::{SinkExt, StreamExt, future, pin_mut};
 
 use serde_json::Value;
+use tokio::sync::mpsc;
 use tokio_tungstenite::connect_async;
 use tungstenite::Message;
 use tungstenite::client::IntoClientRequest;
@@ -37,6 +38,7 @@ async fn main() {
     let join = r#"{"cmd": "join", "channel": "programming", "nick": "rustskymonke"}"#;
     tx.send(String::from(join)).unwrap();
 
+    let (tx_engine, rx_engine) = mpsc::unbounded_channel::<EngineCommand>();
     let mut engine = EngineImpl {
         name: "blah".to_string(),
         prefix: "*".to_string(),
@@ -45,12 +47,18 @@ async fn main() {
         afk_users: HashMap::new(),
         online_listener: None,
         chat_listener: None,
+        tx: tx_engine.clone(),
+        rx: Some(rx_engine),
     };
 
-    let producer = engine.Start().await;
-    let handler = core::new(producer);
+    let handler = core::new(engine.get_tx());
 
+    // background engine loop that checks for incoming EngineCommand events
+    engine.start().await;
+
+    // our ws message receiver
     while let Some(v) = rx.recv().await {
+        // send received WS message to the engine
         handler.handle(&v);
     }
 

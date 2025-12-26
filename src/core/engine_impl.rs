@@ -1,8 +1,9 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::rc::{Rc, Weak};
 
 use serde_json::Value;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, UnboundedReceiver};
 
 use crate::core::event_handler::EngineCommand;
 use crate::model::Flair;
@@ -22,11 +23,18 @@ pub struct EngineImpl {
 
     pub online_listener: Option<Box<dyn Listener>>,
     pub chat_listener: Option<Box<dyn Listener>>,
+
+    pub tx: mpsc::UnboundedSender<EngineCommand>,
+    pub rx: Option<mpsc::UnboundedReceiver<EngineCommand>>,
 }
 
 impl EngineImpl {
     pub fn s(&self) -> String {
         return "dummy".to_string();
+    }
+
+    pub fn get_tx(&self) -> mpsc::UnboundedSender<EngineCommand> {
+        return self.tx.clone();
     }
 
     pub fn set_online_listener(&mut self, l: OnlineListenerImpl) {
@@ -37,17 +45,36 @@ impl EngineImpl {
         self.chat_listener = Some(Box::from(l));
     }
 }
+
+pub fn new() -> EngineImpl {
+    let (tx, rx) = mpsc::unbounded_channel::<EngineCommand>();
+
+    return EngineImpl {
+        name: "bot".to_string(),
+        channel: "programing".to_string(),
+        prefix: "*".to_string(),
+        active_users: HashMap::new(),
+        afk_users: HashMap::new(),
+        online_listener: None,
+        chat_listener: None,
+        tx: tx,
+        rx: Some(rx),
+    };
+}
+
 impl Engine for EngineImpl {
-    async fn Start(&self) -> (mpsc::UnboundedSender<EngineCommand>) {
-        let (tx, mut rx) = mpsc::unbounded_channel::<EngineCommand>();
-
-        tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                println!("Engine received: {}", msg.to_string());
+    async fn start(&mut self) {
+        let o = self.rx.take();
+        match o {
+            Some(mut rx) => {
+                tokio::spawn(async move {
+                    while let Some(msg) = rx.recv().await {
+                        println!("Engine received: {}", msg.to_string());
+                    }
+                });
             }
-        });
-
-        return tx;
+            None => {}
+        }
     }
 
     fn Stop(&self) {}
