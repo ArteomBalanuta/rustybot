@@ -59,13 +59,13 @@ async fn main() {
     // background engine loop that checks for incoming EngineCommand events
     engine.start().await;
 
+    // check for the response immediately
+    handle.process_response().await;
+
     // our ws message receiver
     while let Some(v) = rx.recv().await {
         // send received WS message to the engine
         handle.to_engine(&v);
-
-        // check for the response immediately
-        handle.process_response().await;
     }
 
     // Keep the program running so the background tasks don't die
