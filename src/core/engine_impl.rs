@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::Hash;
 use std::rc::{Rc, Weak};
 
@@ -26,6 +27,8 @@ pub struct EngineImpl {
 
     pub tx: mpsc::UnboundedSender<EngineCommand>,
     pub rx: Option<mpsc::UnboundedReceiver<EngineCommand>>,
+
+    pub tx_feedback: mpsc::UnboundedSender<String>,
 }
 
 impl EngineImpl {
@@ -49,6 +52,8 @@ impl EngineImpl {
 pub fn new() -> EngineImpl {
     let (tx, rx) = mpsc::unbounded_channel::<EngineCommand>();
 
+    let (tx_feedback, rx_feedback) = mpsc::unbounded_channel::<String>();
+
     return EngineImpl {
         name: "bot".to_string(),
         channel: "programing".to_string(),
@@ -59,17 +64,27 @@ pub fn new() -> EngineImpl {
         chat_listener: None,
         tx: tx,
         rx: Some(rx),
+
+        tx_feedback: tx_feedback,
     };
 }
 
 impl Engine for EngineImpl {
     async fn start(&mut self) {
+        let tx = self.tx_feedback.clone();
         let o = self.rx.take();
         match o {
             Some(mut rx) => {
+                // received from handle
                 tokio::spawn(async move {
                     while let Some(msg) = rx.recv().await {
-                        println!("Engine received: {}", msg.to_string());
+                        println!("engine received: {}", msg.to_string());
+
+                        let response =
+                            fmt::format(format_args!("acknowledged: {}", msg.to_string()));
+
+                        // responding
+                        tx.send(response);
                     }
                 });
             }

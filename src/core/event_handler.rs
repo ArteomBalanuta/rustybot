@@ -20,13 +20,25 @@ impl fmt::Display for EngineCommand {
     }
 }
 
-#[derive(Clone)] // Crucial: Each observer gets its own clone of the handle
 pub struct EventHandler {
+    // Crucial: Each observer gets its own clone of the handle
     tx: mpsc::UnboundedSender<EngineCommand>,
+    rx: Option<mpsc::UnboundedReceiver<String>>,
+}
+
+impl Clone for EventHandler {
+    fn clone(&self) -> Self {
+        Self {
+            // UnboundedSender is cheap to clone
+            tx: self.tx.clone(),
+            // Receiver is NOT cloneable, so the clone gets None
+            rx: None,
+        }
+    }
 }
 
 impl EventHandler {
-    pub fn handle(&self, j: &str) {
+    pub fn to_engine(&self, j: &str) {
         let v: Value = serde_json::from_str(&j).unwrap();
         if v["cmd"].is_null() {
             println!("missing cmd, payload: {}", v);
@@ -40,7 +52,7 @@ impl EventHandler {
             }
             "onlineAdd" => {
                 let u = parse_user(j);
-                self.tx.send(EngineCommand::AddActiveUser(u)).unwrap();
+                self.send(EngineCommand::AddActiveUser(u));
             }
             "onlineRemove" => {}
             "chat" => {
@@ -53,11 +65,32 @@ impl EventHandler {
         }
     }
 
-    pub fn send(&self, command: EngineCommand) {
+    fn send(&self, command: EngineCommand) {
         self.tx.send(command).unwrap();
+    }
+
+    // loop to process engine responses
+    pub async fn process_response(&mut self) {
+        let o = self.rx.take();
+        tokio::spawn(async move {
+            match o {
+                Some(mut rx) => {
+                    while let Some(v) = rx.recv().await {
+                        println!("received from engine: {}", v);
+                    }
+                }
+                None => {}
+            }
+        });
     }
 }
 
-pub fn new(tx: mpsc::UnboundedSender<EngineCommand>) -> EventHandler {
-    EventHandler { tx: tx }
+pub fn new(
+    tx: mpsc::UnboundedSender<EngineCommand>,
+    rx: mpsc::UnboundedReceiver<String>,
+) -> EventHandler {
+    EventHandler {
+        tx: tx,
+        rx: Some(rx),
+    }
 }
