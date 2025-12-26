@@ -2,7 +2,10 @@ use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
 use serde_json::Value;
+use tokio::sync::mpsc;
 
+use crate::core::event_handler::EngineCommand;
+use crate::model::Flair;
 use crate::{
     core::Engine,
     listener::{ChatListenerImpl, Listener, OnlineListenerImpl},
@@ -17,8 +20,8 @@ pub struct EngineImpl {
     pub active_users: HashMap<User, String>,
     pub afk_users: HashMap<User, String>,
 
-    pub online_listener: Option<OnlineListenerImpl>,
-    pub chat_listener: Option<ChatListenerImpl>,
+    pub online_listener: Option<Box<dyn Listener>>,
+    pub chat_listener: Option<Box<dyn Listener>>,
 }
 
 impl EngineImpl {
@@ -26,16 +29,27 @@ impl EngineImpl {
         return "dummy".to_string();
     }
 
-    pub fn SetOnlineListener(&mut self, l: OnlineListenerImpl) {
-        self.online_listener = Some(l);
+    pub fn set_online_listener(&mut self, l: OnlineListenerImpl) {
+        self.online_listener = Some(Box::from(l));
     }
 
-    pub fn SetChatListenerImpl(&mut self, l: ChatListenerImpl) {
-        self.chat_listener = Some(l);
+    pub fn set_chat_listener(&mut self, l: ChatListenerImpl) {
+        self.chat_listener = Some(Box::from(l));
     }
 }
 impl Engine for EngineImpl {
-    fn Start(&self) {}
+    async fn Start(&self) -> (mpsc::UnboundedSender<EngineCommand>) {
+        let (tx, mut rx) = mpsc::unbounded_channel::<EngineCommand>();
+
+        tokio::spawn(async move {
+            while let Some(msg) = rx.recv().await {
+                println!("Engine received: {}", msg.to_string());
+            }
+        });
+
+        return tx;
+    }
+
     fn Stop(&self) {}
 
     fn DispatchMessage(&self, msg: &str) {
@@ -72,7 +86,7 @@ impl Engine for EngineImpl {
         return "blah".to_string();
     }
 
-    fn AddActiveUser(&self, joined: &User) {}
+    fn AddActiveUser(&self, joined: User) {}
     fn RemoveActiveUser(&self, left: &User) {}
 
     fn AddAfkUser(&self, u: &User, reason: &str) {}
@@ -84,15 +98,11 @@ impl Engine for EngineImpl {
         return User {
             name: self.s(),
             channel: self.s(),
-            is_me: false,
-            is_bot: false,
             trip: self.s(),
             u_type: self.s(),
             hash: self.s(),
-            level: 1111,
             color: self.s(),
-            flair: 111,
-            user_id: 111,
+            flair: Flair::Boolean(false),
         };
     }
     fn GetActiveUsers(&self) -> HashMap<User, String> {

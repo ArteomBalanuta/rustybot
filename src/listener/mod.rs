@@ -1,8 +1,8 @@
+mod chat_listener;
 mod listener;
-mod listener_chat;
-mod listener_online;
+mod setonline_listener;
 
 // 2. Re-export the struct publicly
+pub use chat_listener::ChatListenerImpl;
 pub use listener::Listener;
-pub use listener_chat::ChatListenerImpl;
-pub use listener_online::OnlineListenerImpl;
+pub use setonline_listener::OnlineListenerImpl;

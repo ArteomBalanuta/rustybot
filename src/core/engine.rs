@@ -1,16 +1,18 @@
-use crate::model::User;
+use tokio::sync::mpsc;
+
+use crate::{core::event_handler::EngineCommand, model::User};
 
 use std::collections::HashMap;
 
 pub trait Engine {
-    fn Start(&self);
+    async fn Start(&self) -> (mpsc::UnboundedSender<EngineCommand>);
     fn Stop(&self);
 
     fn DispatchMessage(&self, message: &str);
     fn SendRawMessage(&self, message: &str);
     fn SendChatMessage(&self, author: &str, message: &str, isWhisper: bool) -> String;
 
-    fn AddActiveUser(&self, joined: &User);
+    fn AddActiveUser(&self, joined: User);
     fn RemoveActiveUser(&self, left: &User);
 
     fn AddAfkUser(&self, u: &User, reason: &str);
