@@ -1,4 +1,5 @@
-use std::fmt::{self, write};
+use std::fmt::{self, Debug, write};
+use std::ops::Add;
 
 use serde_json::Value;
 use tokio::sync::mpsc;
@@ -44,10 +45,14 @@ impl EventHandler {
         if let Ok(msg) = serde_json::from_str::<HackChatCommand>(j) {
             match msg {
                 HackChatCommand::OnlineSet(data) => {
-                    data.users
+                    let users = data
+                        .users
                         .iter()
-                        .map(|u| &u.name)
-                        .for_each(|name| println!("User online: {}", name));
+                        .map(|u| u.name.clone())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    println!("Users online: {}", users);
                 }
                 HackChatCommand::OnlineAdd(u) => self.send(EngineCommand::AddActiveUser(u)),
                 HackChatCommand::Chat {
@@ -66,30 +71,6 @@ impl EventHandler {
                 }
             }
         }
-        // let v: Value = serde_json::from_str(&j).unwrap();
-        // if v["cmd"].is_null() {
-        //     println!("missing cmd, payload: {}", v);
-        //     return;
-        // }
-        // let cmd = v["cmd"].as_str().unwrap();
-        // match cmd {
-        //     "join" => {}
-        //     "onlineSet" => {
-        //         println!("onlineSet event");
-        //     }
-        //     "onlineAdd" => {
-        //         let u = parse_user(j);
-        //         self.send(EngineCommand::AddActiveUser(u));
-        //     }
-        //     "onlineRemove" => {}
-        //     "chat" => {
-        //         println!("chat: {}", v["text"]);
-        //     }
-        //     "info" => println!("info: {}", v["text"]),
-        //     _ => {
-
-        //     }
-        // }
     }
 
     fn send(&self, command: EngineCommand) {

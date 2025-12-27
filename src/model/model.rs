@@ -1,4 +1,4 @@
-use std::{clone, fmt};
+use std::{clone, fmt, hash::Hash};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
@@ -15,6 +15,23 @@ pub struct User {
     pub color: String,
     pub flair: Flair,
 }
+
+impl Hash for User {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.channel.hash(state);
+        self.name.hash(state);
+        self.trip.hash(state);
+        self.u_type.hash(state);
+        self.hash.hash(state);
+        self.color.hash(state);
+    }
+}
+impl PartialEq for User {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+impl Eq for User {}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)] // This is the secret sauce

@@ -5,10 +5,10 @@ use crate::{core::event_handler::EngineCommand, model::User};
 use std::collections::HashMap;
 
 pub trait Engine {
-    async fn start(&mut self);
+    // async fn start(self);
     fn Stop(&self);
 
-    fn DispatchMessage(&self, message: &str);
+    // fn DispatchMessage(&self, message: &str);
     fn SendRawMessage(&self, message: &str);
     fn SendChatMessage(&self, author: &str, message: &str, isWhisper: bool) -> String;
 

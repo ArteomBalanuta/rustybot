@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 use std::rc::{Rc, Weak};
+use std::sync::Arc;
 
 use serde_json::Value;
 use tokio::sync::mpsc::{self, UnboundedReceiver};
@@ -22,8 +23,8 @@ pub struct EngineImpl {
     pub active_users: HashMap<User, String>,
     pub afk_users: HashMap<User, String>,
 
-    pub online_listener: Option<Box<dyn Listener>>,
-    pub chat_listener: Option<Box<dyn Listener>>,
+    pub online_listener: Option<Box<dyn Listener + Send>>,
+    pub chat_listener: Option<Box<dyn Listener + Send>>,
 
     pub tx: mpsc::UnboundedSender<EngineCommand>,
     pub rx: Option<mpsc::UnboundedReceiver<EngineCommand>>,
@@ -69,60 +70,39 @@ pub fn new() -> EngineImpl {
     };
 }
 
-impl Engine for EngineImpl {
-    async fn start(&mut self) {
-        let tx = self.tx_feedback.clone();
-        let o = self.rx.take();
-        match o {
-            Some(mut rx) => {
-                // received from handle
-                tokio::spawn(async move {
-                    while let Some(msg) = rx.recv().await {
-                        println!("engine received: {}", msg.to_string());
+impl EngineImpl {
+    pub async fn start(mut self) {
+        // received from handle
+        tokio::spawn(async move {
+            let mut rx = self.rx.take().unwrap();
 
-                        let response =
-                            fmt::format(format_args!("acknowledged: {}", msg.to_string()));
+            while let Some(msg) = rx.recv().await {
+                println!("engine received: {}", msg.to_string());
+                let response = fmt::format(format_args!("acknowledged: {}", msg.to_string()));
 
-                        // responding
-                        tx.send(response);
-                    }
-                });
+                self.process_command(msg);
+
+                // responding
+                self.tx_feedback.send(response);
+                println!("responsed ");
             }
-            None => {}
-        }
+        });
     }
 
+    fn process_command(&mut self, msg: EngineCommand) {
+        match msg {
+            EngineCommand::AddActiveUser(u) => {
+                println!("Engine Added user: {}", u.name);
+                self.active_users.insert(u, "".to_string());
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Engine for EngineImpl {
     fn Stop(&self) {}
 
-    fn DispatchMessage(&self, msg: &str) {
-        let v: Value = serde_json::from_str(msg).unwrap();
-        if v["cmd"].is_null() {
-            println!("missing cmd, payload: {}", v);
-            return;
-        }
-        let cmd = v["cmd"].as_str().unwrap();
-        match cmd {
-            "join" => println!("{}", msg),
-            "onlineSet" => {
-                if let Some(l) = &self.online_listener {
-                    println!("notifying onlineSet");
-                    l.notify(msg);
-                }
-            }
-            "onlineAdd" => {}
-            "onlineRemove" => {}
-            "chat" => {
-                if let Some(l) = &self.chat_listener {
-                    println!("notifying chat");
-                    l.notify(msg);
-                }
-            }
-            "info" => println!("chat: {}", v["text"]),
-            _ => {
-                println!("unknown cmd: {}", msg)
-            }
-        }
-    }
     fn SendRawMessage(&self, message: &str) {}
     fn SendChatMessage(&self, author: &str, message: &str, isWhisper: bool) -> String {
         return "blah".to_string();
