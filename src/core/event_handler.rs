@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug)]
 pub enum EngineCommand {
     AddActiveUser(User),
+    SetOnlineUsers(Vec<User>),
 }
 
 // to_string()
@@ -45,14 +46,7 @@ impl EventHandler {
         if let Ok(msg) = serde_json::from_str::<HackChatCommand>(j) {
             match msg {
                 HackChatCommand::OnlineSet(data) => {
-                    let users = data
-                        .users
-                        .iter()
-                        .map(|u| u.name.clone())
-                        .collect::<Vec<_>>()
-                        .join(", ");
-
-                    println!("Users online: {}", users);
+                    self.send(EngineCommand::SetOnlineUsers(data.users));
                 }
                 HackChatCommand::OnlineAdd(u) => self.send(EngineCommand::AddActiveUser(u)),
                 HackChatCommand::Chat {

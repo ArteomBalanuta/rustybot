@@ -77,14 +77,7 @@ impl EngineImpl {
             let mut rx = self.rx.take().unwrap();
 
             while let Some(msg) = rx.recv().await {
-                println!("engine received: {}", msg.to_string());
-                let response = fmt::format(format_args!("acknowledged: {}", msg.to_string()));
-
                 self.process_command(msg);
-
-                // responding
-                self.tx_feedback.send(response);
-                println!("responsed ");
             }
         });
     }
@@ -92,11 +85,25 @@ impl EngineImpl {
     fn process_command(&mut self, msg: EngineCommand) {
         match msg {
             EngineCommand::AddActiveUser(u) => {
-                println!("Engine Added user: {}", u.name);
+                println!("[Engine] Added user: {}", u.name);
                 self.active_users.insert(u, "".to_string());
+
+                self.respond("AddActiveUser executed".to_string());
+            }
+            EngineCommand::SetOnlineUsers(users) => {
+                users
+                    .iter()
+                    .for_each(|u| _ = self.active_users.insert(u.clone(), "".to_string()));
+                println!("[Engine] Set online users");
+
+                self.respond("SetOnlineUsers executed".to_string());
             }
             _ => {}
         }
+    }
+
+    fn respond(&mut self, msg: String) {
+        self.tx_feedback.send(msg).unwrap();
     }
 }
 
