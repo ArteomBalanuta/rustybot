@@ -1,8 +1,9 @@
-use core::fmt;
-use std::fmt::write;
+use std::fmt::{self, write};
 
 use serde_json::Value;
 use tokio::sync::mpsc;
+
+use crate::model::HackChatCommand;
 
 use crate::{
     core::Engine,
@@ -14,6 +15,7 @@ pub enum EngineCommand {
     AddActiveUser(User),
 }
 
+// to_string()
 impl fmt::Display for EngineCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -39,30 +41,55 @@ impl Clone for EventHandler {
 
 impl EventHandler {
     pub fn to_engine(&self, j: &str) {
-        let v: Value = serde_json::from_str(&j).unwrap();
-        if v["cmd"].is_null() {
-            println!("missing cmd, payload: {}", v);
-            return;
+        if let Ok(msg) = serde_json::from_str::<HackChatCommand>(j) {
+            match msg {
+                HackChatCommand::OnlineSet(data) => {
+                    data.users
+                        .iter()
+                        .map(|u| &u.name)
+                        .for_each(|name| println!("User online: {}", name));
+                }
+                HackChatCommand::OnlineAdd(u) => self.send(EngineCommand::AddActiveUser(u)),
+                HackChatCommand::Chat {
+                    text: text,
+                    nick: nick,
+                } => {
+                    let f = fmt::format(format_args!("<{}>: {}", nick, text));
+                    println!("{}", f);
+                }
+                HackChatCommand::Info { text: text } => {
+                    let f = fmt::format(format_args!("<info>: {}", text));
+                    println!("{}", f);
+                }
+                _ => {
+                    println!("unknown cmd: {}", msg.to_string());
+                }
+            }
         }
-        let cmd = v["cmd"].as_str().unwrap();
-        match cmd {
-            "join" => {}
-            "onlineSet" => {
-                println!("onlineSet event");
-            }
-            "onlineAdd" => {
-                let u = parse_user(j);
-                self.send(EngineCommand::AddActiveUser(u));
-            }
-            "onlineRemove" => {}
-            "chat" => {
-                println!("chat: {}", v["text"]);
-            }
-            "info" => println!("info: {}", v["text"]),
-            _ => {
-                println!("unknown cmd: {}", v)
-            }
-        }
+        // let v: Value = serde_json::from_str(&j).unwrap();
+        // if v["cmd"].is_null() {
+        //     println!("missing cmd, payload: {}", v);
+        //     return;
+        // }
+        // let cmd = v["cmd"].as_str().unwrap();
+        // match cmd {
+        //     "join" => {}
+        //     "onlineSet" => {
+        //         println!("onlineSet event");
+        //     }
+        //     "onlineAdd" => {
+        //         let u = parse_user(j);
+        //         self.send(EngineCommand::AddActiveUser(u));
+        //     }
+        //     "onlineRemove" => {}
+        //     "chat" => {
+        //         println!("chat: {}", v["text"]);
+        //     }
+        //     "info" => println!("info: {}", v["text"]),
+        //     _ => {
+
+        //     }
+        // }
     }
 
     fn send(&self, command: EngineCommand) {

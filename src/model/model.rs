@@ -1,9 +1,9 @@
-use std::clone;
+use std::{clone, fmt};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")] // Maps "isMe" in JSON to "is_me" in Rust
 pub struct User {
     pub channel: String,
@@ -27,4 +27,33 @@ pub fn parse_user(json: &str) -> User {
     // println!("parsing user: {}", json);
     let u: User = serde_json::from_str(json).unwrap();
     return u;
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct OnlineSetData {
+    pub users: Vec<User>, // This matches the "users" array in JSON
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "cmd")] // This tells Serde to look at the "cmd" field
+pub enum HackChatCommand {
+    #[serde(rename = "onlineSet")]
+    OnlineSet(OnlineSetData),
+    #[serde(rename = "onlineAdd")]
+    OnlineAdd(User),
+    #[serde(rename = "onlineRemove")]
+    OnlineRemove(User),
+    #[serde(rename = "chat")]
+    Chat { text: String, nick: String },
+    #[serde(rename = "info")]
+    Info { text: String },
+
+    #[serde(other)] // Catch-all for commands you don't care about yet
+    Unknown,
+}
+
+impl fmt::Display for HackChatCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
