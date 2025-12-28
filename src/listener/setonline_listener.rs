@@ -1,14 +1,9 @@
-use std::sync::Mutex;
-use std::sync::Weak;
-
-use crate::core::Engine;
-use crate::core::EngineImpl;
 use crate::listener::Listener;
 
 pub struct OnlineListenerImpl {}
 
 impl Listener for OnlineListenerImpl {
-    fn notify(&self, json: &str) {
+    fn notify(&self, _json: &str) {
         println!("in onlineSetListener notify");
     }
 }

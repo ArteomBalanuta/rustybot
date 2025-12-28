@@ -1,7 +1,6 @@
-use std::{clone, fmt, hash::Hash};
+use std::{fmt, hash::Hash};
 
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")] // Maps "isMe" in JSON to "is_me" in Rust

@@ -1,18 +1,10 @@
-use std::fmt::{self, Debug, write};
-use std::mem::take;
-use std::ops::Add;
-use std::time::Duration;
+use std::fmt::{self, Debug};
 
-use serde_json::Value;
 use tokio::sync::mpsc;
-use tokio::time::sleep;
 
 use crate::model::HackChatCommand;
 
-use crate::{
-    core::Engine,
-    model::{User, parse_user},
-};
+use crate::model::User;
 
 #[derive(Debug)]
 pub enum EngineCommand {
@@ -80,14 +72,11 @@ impl EventHandler {
                 HackChatCommand::OnlineAdd(u) => {
                     self.send_to_engine(EngineCommand::AddActiveUser(u))
                 }
-                HackChatCommand::Chat {
-                    text: text,
-                    nick: nick,
-                } => {
+                HackChatCommand::Chat { text, nick } => {
                     let f = fmt::format(format_args!("<{}>: {}", nick, text));
                     println!("{}", f);
                 }
-                HackChatCommand::Info { text: text } => {
+                HackChatCommand::Info { text } => {
                     let f = fmt::format(format_args!("<info>: {}", text));
                     println!("{}", f);
                 }

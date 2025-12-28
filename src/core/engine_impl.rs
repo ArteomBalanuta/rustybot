@@ -1,11 +1,6 @@
 use std::collections::HashMap;
-use std::fmt;
-use std::hash::Hash;
-use std::rc::{Rc, Weak};
-use std::sync::Arc;
 
-use serde_json::Value;
-use tokio::sync::mpsc::{self, UnboundedReceiver};
+use tokio::sync::mpsc::{self};
 
 use crate::core::event_handler::EngineCommand;
 use crate::model::Flair;
@@ -53,7 +48,7 @@ impl EngineImpl {
 pub fn new() -> EngineImpl {
     let (tx, rx) = mpsc::unbounded_channel::<EngineCommand>();
 
-    let (tx_feedback, rx_feedback) = mpsc::unbounded_channel::<String>();
+    let (tx_feedback, _rx_feedback) = mpsc::unbounded_channel::<String>();
 
     return EngineImpl {
         name: "bot".to_string(),
@@ -114,20 +109,20 @@ impl EngineImpl {
 impl Engine for EngineImpl {
     fn Stop(&self) {}
 
-    fn SendRawMessage(&self, message: &str) {}
-    fn SendChatMessage(&self, author: &str, message: &str, isWhisper: bool) -> String {
+    fn SendRawMessage(&self, _message: &str) {}
+    fn SendChatMessage(&self, _author: &str, _message: &str, _isWhisper: bool) -> String {
         return "blah".to_string();
     }
 
-    fn AddActiveUser(&self, joined: User) {}
-    fn RemoveActiveUser(&self, left: &User) {}
+    fn AddActiveUser(&self, _joined: User) {}
+    fn RemoveActiveUser(&self, _left: &User) {}
 
-    fn AddAfkUser(&self, u: &User, reason: &str) {}
+    fn AddAfkUser(&self, _u: &User, _reason: &str) {}
     fn GetAfkUsers(&self) -> HashMap<User, String> {
         return HashMap::new();
     }
 
-    fn GetActiveUserByName(&self, name: &str) -> User {
+    fn GetActiveUserByName(&self, _name: &str) -> User {
         return User {
             name: self.s(),
             channel: self.s(),
@@ -142,7 +137,7 @@ impl Engine for EngineImpl {
         return HashMap::new();
     }
 
-    fn Kick(&self, name: &str, channel: &str) {}
+    fn Kick(&self, _name: &str, _channel: &str) {}
 
     fn GetPrefix(&self) -> String {
         return "a".to_string();
@@ -154,5 +149,5 @@ impl Engine for EngineImpl {
         return "b".to_string();
     }
 
-    fn SetName(&self, name: &str) {}
+    fn SetName(&self, _name: &str) {}
 }

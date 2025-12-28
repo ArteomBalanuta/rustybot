@@ -1,22 +1,9 @@
-use std::process::{ExitCode, exit};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use futures::{SinkExt, StreamExt};
 
-use futures::stream::{Any, SplitSink};
-use futures::{SinkExt, StreamExt, future, pin_mut};
-
-use tokio::net::TcpStream;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
+use tokio_tungstenite::connect_async;
 use tungstenite::Message;
 use tungstenite::client::IntoClientRequest;
-use tungstenite::http::{Method, Request};
-
-use tokio::io::{AsyncWriteExt, stdout};
-use tokio::time::sleep;
-
-use crate::core::{Engine, EngineImpl};
 
 pub struct Connection {}
 impl Connection {
