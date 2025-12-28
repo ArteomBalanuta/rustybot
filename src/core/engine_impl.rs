@@ -88,7 +88,8 @@ impl EngineImpl {
                 println!("[Engine] Added user: {}", u.name);
                 self.active_users.insert(u, "".to_string());
 
-                self.respond("AddActiveUser executed".to_string());
+                //TODO: should be valid json
+                // self.send_ws_message("AddActiveUser executed".to_string());
             }
             EngineCommand::SetOnlineUsers(users) => {
                 users
@@ -96,13 +97,16 @@ impl EngineImpl {
                     .for_each(|u| _ = self.active_users.insert(u.clone(), "".to_string()));
                 println!("[Engine] Set online users");
 
-                self.respond("SetOnlineUsers executed".to_string());
+                //TODO: should be valid json
+                // self.send_ws_message("SetOnlineUsers executed".to_string());
             }
-            _ => {}
+            _ => {
+                println!("no command");
+            }
         }
     }
 
-    fn respond(&mut self, msg: String) {
+    fn send_ws_message(&mut self, msg: String) {
         self.tx_feedback.send(msg).unwrap();
     }
 }

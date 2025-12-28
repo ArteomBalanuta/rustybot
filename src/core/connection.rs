@@ -1,3 +1,4 @@
+use std::process::{ExitCode, exit};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -53,6 +54,9 @@ impl Connection {
                         let _ = tx_receiver.send(text.to_string());
                     }
                     Ok(Message::Binary(bin)) => println!("Received binary: {:?}", bin),
+                    Ok(Message::Close(frame)) => {
+                        println!("Server sent close frame: {:?}", frame);
+                    }
                     Err(e) => {
                         eprintln!("Error reading: {}", e);
                         break;

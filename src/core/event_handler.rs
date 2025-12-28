@@ -1,8 +1,11 @@
 use std::fmt::{self, Debug, write};
+use std::mem::take;
 use std::ops::Add;
+use std::time::Duration;
 
 use serde_json::Value;
 use tokio::sync::mpsc;
+use tokio::time::sleep;
 
 use crate::model::HackChatCommand;
 
@@ -28,6 +31,8 @@ pub struct EventHandler {
     // Crucial: Each observer gets its own clone of the handle
     tx: mpsc::UnboundedSender<EngineCommand>,
     rx: Option<mpsc::UnboundedReceiver<String>>,
+    tx_ws: mpsc::UnboundedSender<String>,
+    rx_ws: Option<mpsc::UnboundedReceiver<String>>,
 }
 
 impl Clone for EventHandler {
@@ -37,18 +42,44 @@ impl Clone for EventHandler {
             tx: self.tx.clone(),
             // Receiver is NOT cloneable, so the clone gets None
             rx: None,
+            tx_ws: self.tx_ws.clone(),
+            rx_ws: None,
         }
     }
 }
 
 impl EventHandler {
-    pub fn to_engine(&self, j: &str) {
-        if let Ok(msg) = serde_json::from_str::<HackChatCommand>(j) {
-            match msg {
-                HackChatCommand::OnlineSet(data) => {
-                    self.send(EngineCommand::SetOnlineUsers(data.users));
+    pub async fn start(mut self) {
+        tokio::spawn(async move {
+            // our ws message receiver
+            let mut rx_ws = self.rx_ws.take().expect("No WS receiver");
+            let mut rx = self.rx.take().expect("No engine receiver");
+
+            loop {
+                tokio::select! {
+                    // ws -> engine
+                    Some(ws_msg) = rx_ws.recv() => {
+                        self.dispatch(&ws_msg);
+                    },
+
+                    // engine -> ws
+                    Some(rx_msg) = rx.recv() => {
+                        self.send_to_ws(rx_msg);
+                    }
                 }
-                HackChatCommand::OnlineAdd(u) => self.send(EngineCommand::AddActiveUser(u)),
+            }
+        });
+    }
+
+    fn dispatch(&mut self, j: &str) {
+        match serde_json::from_str::<HackChatCommand>(j) {
+            Ok(msg) => match msg {
+                HackChatCommand::OnlineSet(data) => {
+                    self.send_to_engine(EngineCommand::SetOnlineUsers(data.users));
+                }
+                HackChatCommand::OnlineAdd(u) => {
+                    self.send_to_engine(EngineCommand::AddActiveUser(u))
+                }
                 HackChatCommand::Chat {
                     text: text,
                     nick: nick,
@@ -63,36 +94,32 @@ impl EventHandler {
                 _ => {
                     println!("unknown cmd: {}", msg.to_string());
                 }
+            },
+            Err(r) => {
+                println!("Err: {}", r);
             }
         }
     }
 
-    fn send(&self, command: EngineCommand) {
+    fn send_to_engine(&self, command: EngineCommand) {
         self.tx.send(command).unwrap();
     }
 
-    // loop to process engine responses
-    pub async fn process_response(&mut self) {
-        let o = self.rx.take();
-        tokio::spawn(async move {
-            match o {
-                Some(mut rx) => {
-                    while let Some(v) = rx.recv().await {
-                        println!("received from engine: {}", v);
-                    }
-                }
-                None => {}
-            }
-        });
+    fn send_to_ws(&self, json: String) {
+        self.tx_ws.send(json).unwrap();
     }
 }
 
 pub fn new(
-    tx: mpsc::UnboundedSender<EngineCommand>,
-    rx: mpsc::UnboundedReceiver<String>,
+    tx: mpsc::UnboundedSender<EngineCommand>, // to engine
+    rx: mpsc::UnboundedReceiver<String>,      // from engine
+    tx_ws: mpsc::UnboundedSender<String>,     // to WS
+    rx_ws: mpsc::UnboundedReceiver<String>,   // from WS
 ) -> EventHandler {
     EventHandler {
         tx: tx,
         rx: Some(rx),
+        tx_ws: tx_ws,
+        rx_ws: Some(rx_ws),
     }
 }

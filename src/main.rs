@@ -33,10 +33,10 @@ use crate::model::parse_user;
 #[tokio::main]
 async fn main() {
     let url = "wss://hack.chat/chat-ws";
-    let (tx, mut rx) = Connection::connect(url).await;
+    let (tx_ws, mut rx_ws) = Connection::connect(url).await;
 
     let join = r#"{"cmd": "join", "channel": "programming", "nick": "rustskymonke"}"#;
-    tx.send(String::from(join)).unwrap();
+    tx_ws.send(String::from(join)).unwrap();
 
     let (tx_feedback, rx_feedback) = mpsc::unbounded_channel::<String>();
     let (tx_engine, rx_engine) = mpsc::unbounded_channel::<EngineCommand>();
@@ -54,17 +54,13 @@ async fn main() {
         tx_feedback: tx_feedback.clone(),
     };
 
-    let mut handle = core::new(engine.get_tx(), rx_feedback);
+    let mut handle = core::new(engine.get_tx(), rx_feedback, tx_ws, rx_ws);
 
     // background engine loop that checks for incoming EngineCommand events
     engine.start().await;
 
-    // check for the response immediately
-    handle.process_response().await;
+    // dispatched engine responses
+    handle.start().await;
 
-    // our ws message receiver
-    while let Some(v) = rx.recv().await {
-        // send received WS message to the engine
-        handle.to_engine(&v);
-    }
+    tokio::signal::ctrl_c().await.unwrap();
 }
